@@ -1,6 +1,7 @@
 package com.example.userservice.service;
 
 
+import com.example.userservice.Exceptions.JwtVerificationException;
 import com.example.userservice.Exceptions.PasswordNotMatchException;
 import com.example.userservice.Exceptions.UserAlreadyExistException;
 import com.example.userservice.Exceptions.UserNotExistException;
@@ -10,6 +11,9 @@ import com.example.userservice.models.SessionStatus;
 import com.example.userservice.models.User;
 import com.example.userservice.repository.SessionRepository;
 import com.example.userservice.repository.UserRepository;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
+import io.jsonwebtoken.Jwts;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -19,7 +23,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.MultiValueMapAdapter;
 
+import javax.crypto.SecretKey;
+import java.time.LocalDate;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -28,12 +36,14 @@ public class AuthService {
     private UserRepository userRepository;
     private SessionRepository sessionRepository;
     private BCryptPasswordEncoder bCryptPasswordEncoder;
+    private SecretKey secretKey;
 
     public AuthService(UserRepository userRepository,SessionRepository sessionRepository,
                        BCryptPasswordEncoder bCryptPasswordEncoder) {
         this.userRepository = userRepository;
         this.sessionRepository=sessionRepository;
         this.bCryptPasswordEncoder=bCryptPasswordEncoder;
+        secretKey= Jwts.SIG.HS256.key().build();
     }
 
     public ResponseEntity<UserDto> login(String email, String password) throws Exception
@@ -47,7 +57,20 @@ public class AuthService {
         if(!bCryptPasswordEncoder.matches(password, user.getPassword()))
             throw new PasswordNotMatchException("Invalid Password");
 
-        String token= RandomStringUtils.randomAlphanumeric(30);
+      //  String token= RandomStringUtils.randomAlphanumeric(30);
+
+
+
+        Map<String,Object> jwtData=new HashMap<>();
+        jwtData.put("email",email);
+        jwtData.put("createdAt",new Date());
+        jwtData.put("expiryAt", LocalDate.now().plusDays(3).toEpochDay());
+
+        String token=Jwts.
+                builder().
+                claims(jwtData).
+                signWith(secretKey).
+                compact();
 
         Session session=new Session();
         session.setToken(token);
@@ -95,7 +118,7 @@ public class AuthService {
         return UserDto.from(savedUser);
     }
 
-    public SessionStatus validate(String token,Long userId)
+    public SessionStatus validate(String token,Long userId) throws Exception
     {
       Optional<Session> sessionOptional=sessionRepository.findByTokenAndUser_Id(token,userId);
 
@@ -108,6 +131,24 @@ public class AuthService {
       {
           return SessionStatus.ENDED;
       }
+
+      //Token Verification
+
+        try {
+
+            Jws<Claims> jwsClaims=Jwts
+                    .parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token);
+
+        }catch (Exception e)
+        {
+            throw new JwtVerificationException("Authentication failed. Please try again later");
+        }
+
+
+
 
       return SessionStatus.ACTIVE;
     }

@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-
     @ExceptionHandler(UserAlreadyExistException.class)
     public ResponseEntity<ExceptionDto> handleUserAlreadyExistException(UserAlreadyExistException userAlreadyExistException)
     {
@@ -30,6 +29,13 @@ public class GlobalExceptionHandler {
     {
         return new ResponseEntity<>(new ExceptionDto(HttpStatus.UNAUTHORIZED, passwordNotMatchException.getMessage())
                 ,HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(JwtVerificationException.class)
+    public ResponseEntity<ExceptionDto> handleJwtVerificationException(JwtVerificationException jwtVerificationException)
+    {
+        return new ResponseEntity<>(new ExceptionDto(HttpStatus.UNAUTHORIZED,jwtVerificationException.getMessage()),
+                HttpStatus.UNAUTHORIZED);
     }
 
 
