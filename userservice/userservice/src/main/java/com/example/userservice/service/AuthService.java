@@ -118,9 +118,10 @@ public class AuthService {
         return UserDto.from(savedUser);
     }
 
-    public SessionStatus validate(String token,Long userId) throws Exception
+    public SessionStatus validate(String token)//Long userId) throws Exception
     {
-      Optional<Session> sessionOptional=sessionRepository.findByTokenAndUser_Id(token,userId);
+      //Optional<Session> sessionOptional=sessionRepository.findByTokenAndUser_Id(token,userId);
+        Optional<Session> sessionOptional=sessionRepository.findByToken(token);
 
       if(sessionOptional.isEmpty())
           return SessionStatus.ENDED;
@@ -144,11 +145,9 @@ public class AuthService {
 
         }catch (Exception e)
         {
-            throw new JwtVerificationException("Authentication failed. Please try again later");
+           // throw new JwtVerificationException("Authentication failed. Please try again later");
+            return SessionStatus.INVALID_TOKEN;
         }
-
-
-
 
       return SessionStatus.ACTIVE;
     }
